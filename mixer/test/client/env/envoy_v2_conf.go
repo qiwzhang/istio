@@ -21,7 +21,6 @@ import (
 	"log"
 
 	"github.com/envoyproxy/go-control-plane/envoy/api/v2"
-	"github.com/envoyproxy/go-control-plane/envoy/api/v2/cluster"
 	"github.com/envoyproxy/go-control-plane/envoy/api/v2/core"
 	"github.com/envoyproxy/go-control-plane/envoy/api/v2/listener"
 	"github.com/envoyproxy/go-control-plane/envoy/api/v2/route"
@@ -70,12 +69,12 @@ func toStruct(msg proto.Message) *types.Struct {
 }
 
 func (s *TestSetup) createEnvoyV2Conf(path string) error {
-	config = createBoostrap()
+	config := s.createBoostrap()
 	content, err := toYAML(config)
 	if err != nil {
 		return err
 	}
-	log.Infof("Static config:\n%s", string(content))
+	log.Printf("Static config:\n%s", string(content))
 	return ioutil.WriteFile(path, content, 0644)
 }
 
@@ -105,17 +104,17 @@ func (s *TestSetup) createListeners() []v2.Listener {
 	out = append(out, s.createHttpListener(httpListenerOptions{
 		ListenerPort: s.ports.ServerProxyPort,
 		ClusterName:  BackendClusterName,
-		MixerConfig:  toStruct(s.mfConfig.HTTPServerConf),
+		MixerConfig:  toStruct(s.mfConf.HTTPServerConf),
 	}))
 
 	// create client proxy to server proxy.
-	out = append(out, createHttpListener(httpListenerOptions{
+	out = append(out, s.createHttpListener(httpListenerOptions{
 		ListenerPort: s.ports.ClientProxyPort,
 		ClusterName:  ServerProxyClusterName,
-		MixerConfig:  toStruct(s.mfConfig.HTTPClientConf),
+		MixerConfig:  toStruct(s.mfConf.HTTPClientConf),
 	}))
 
-	out = append(out, createTcpListener())
+	out = append(out, s.createTcpListener())
 	return out
 }
 
@@ -149,9 +148,6 @@ func (s *TestSetup) createHttpListener(options httpListenerOptions) *v2.Listener
 								Prefix: "/",
 							},
 						},
-						Decorator: &route.Decorator{
-							Operation: upstream.Operation,
-						},
 						Action: &route.Route_Route{
 							Route: &route.RouteAction{
 								ClusterSpecifier: &route.RouteAction_Cluster{Cluster: options.ClusterName},
@@ -164,8 +160,8 @@ func (s *TestSetup) createHttpListener(options httpListenerOptions) *v2.Listener
 	}
 
 	return &v2.Listener{
-		Address: toAddress(options.ListenPort),
-		Name:    fmt.Sprintf("Listener%d", options.ListenPort),
+		Address: toAddress(options.ListenerPort),
+		Name:    fmt.Sprintf("Listener%d", options.ListenerPort),
 		FilterChains: []listener.FilterChain{{
 			Filters: []listener.Filter{{
 				Name:   util.HTTPConnectionManager,

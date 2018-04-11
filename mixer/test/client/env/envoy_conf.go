@@ -266,6 +266,8 @@ func (c *confParam) write(outPath, confTmpl string) error {
 // CreateEnvoyConf create envoy config.
 func (s *TestSetup) CreateEnvoyConf(path string, stress, faultInject bool, mfConfig *MixerFilterConf, ports *Ports,
 	confVersion string) error {
+	return createEnvoyV2Conf(path);
+	
 	c := &confParam{
 		ClientPort:      ports.ClientProxyPort,
 		ServerPort:      ports.ServerProxyPort,
